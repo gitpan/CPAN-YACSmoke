@@ -137,6 +137,22 @@ REVISION HISTORY
     The following changes have been made since the previous publicly
     available version:
 
+    0.03_04 Mon Apr  4 2005
+        - bugfixes
+          * when a grade is not found should be listed as 'none' in test()
+          * new() wasn't being passed the %config hash in mark()
+          * the $dist can either be a full path or the dist name in mark()
+          * uc() was unclear in purge()
+          * debug call removed from purge()
+
+    0.03_03 Mon Apr  4 2005
+        - YAML is now a required module
+        - renamed connect_configure, connect_cpanplus, connect_db,
+          disconnect_db functions to conform to Pod::Coverage reqs
+        - corrected typo in POD
+        - added Pod::Coverage tests
+        - removed File::Spec minimum version since it limited platforms
+
     0.03_02 Mon Apr  4 2005
         - added new purge() and flush() functions
         - ability to specify local database file
@@ -147,7 +163,6 @@ REVISION HISTORY
         - cleaned up audit printing
         - updated POD for plugins & bug reporting
         - added examples/smoke-purge.pl script
-	- removed File::Spec minimum version since it limited platforms
 
     See the Changes file for a complete revision history.
 

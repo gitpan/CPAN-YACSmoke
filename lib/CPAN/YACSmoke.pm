@@ -53,7 +53,7 @@ use Config::IniFiles;
 require Test::Reporter;
 require YAML;
 
-our $VERSION = '0.03_03';
+our $VERSION = '0.03_04';
 $VERSION = eval $VERSION;
 
 require Exporter;
@@ -66,8 +66,6 @@ our %EXPORT_TAGS = (
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT    = ( @{ $EXPORT_TAGS{'default'} } );
-
-# TODO: option to change default names
 
 use constant DATABASE_FILE => 'cpansmoke.dat';
 use constant CONFIG_FILE   => 'cpansmoke.ini';
@@ -645,7 +643,7 @@ sub test {
       my $distpathver = join("-", $distpath, $ver);
       my $distver     = join("-", $dist,     $ver);
 
-      my $grade = $smoker->{checked}->{$distver} || 'ungraded';
+      my $grade = $smoker->{checked}->{$distver} || 'none';
 
       if ((!defined $grade) ||
 	      ($smoker->{allow_retries} && $grade =~ /$smoker->{allow_retries}/)) {
@@ -754,7 +752,7 @@ sub mark {
   };	
 
   my %config = ref($_[0]) eq 'HASH' ? %{ shift() } : ( verbose => 1, );
-  $smoker ||= __PACKAGE__->new( );
+  $smoker ||= __PACKAGE__->new(%config);
 
   $smoker->_audit("\n".('-'x40)."\n");
 
@@ -775,13 +773,15 @@ sub mark {
     my %paths = $smoker->_build_path_list(
       $smoker->_remove_excluded_dists( @distros )
     );
-    foreach my $dist (sort { versioncmp($a, $b) } keys %paths) {
-      foreach my $ver (@{ $paths{$dist} }) {
+    foreach my $distpath (sort { versioncmp($a, $b) } keys %paths) {
+	  my $dist = $distpath;
+	  $dist =~ s!.*/!!;
+      foreach my $ver (@{ $paths{$distpath} }) {
 		$grade = $smoker->{checked}->{"$dist-$ver"};
 		if ($grade) {
-		  $smoker->_track("result for '$dist-$ver' is '$grade'");
+		  $smoker->_track("result for '$distpath-$ver' is '$grade'");
 		} else {
-		  $smoker->_track("no result for '$dist-$ver'");
+		  $smoker->_track("no result for '$distpath-$ver'");
 		}
       }
     }
@@ -886,16 +886,13 @@ sub purge {
 		my $vers = pop @vers;		# the latest
 		if($passed) {
 			$smoker->_track("'$dist-$vers' ['".
-							uc $smoker->{checked}->{"$dist-$vers"}.
+							uc($smoker->{checked}->{"$dist-$vers"}).
 							"'] has been purged");
 			delete $smoker->{checked}->{"$dist-$vers"};
 			if($flush) {
 				my $builddir = catfile($smoker->basedir(), "$dist-$vers");
 				rmtree($builddir)	if(-d $builddir);
 			}
-			$smoker->_track("'$dist-$vers' ['".
-							uc $smoker->{checked}->{"$dist-$vers"}.
-							"'] has been purged");
 		}
 		elsif($smoker->{checked}->{"$dist-$vers"} eq 'pass') {
 			$passed = 1;

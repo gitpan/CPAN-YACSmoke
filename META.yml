@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name: CPAN-YACSmoke
-version: 0.03_03
+version: 0.03_04
 author:
   - |-
     Robert Rothenberg <rrwo at cpan.org>, Barbie <barbie at cpan.org>
@@ -35,7 +35,7 @@ build_requires:
 provides:
   CPAN::YACSmoke:
     file: lib/CPAN/YACSmoke.pm
-    version: 0.03_03
+    version: 0.03_04
   CPAN::YACSmoke::Plugin::Recent:
     file: lib/CPAN/YACSmoke/Plugin/Recent.pm
     version: 0.02
