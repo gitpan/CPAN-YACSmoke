@@ -2,6 +2,7 @@ Build.PL
 Changes
 examples/cpansmoke.pl
 examples/smoke-reports.pl
+examples/smoke-purge.pl
 Makefile.PL
 MANIFEST
 META.yml
@@ -16,6 +17,7 @@ t/21mark.t
 t/22exclude.t
 t/30object.t
 t/90podtest.t
+t/90podcover.t
 t/config.ini
 SIGNATURE    Added here by Module::Build
 SIGNATURE    Added here by Module::Build

@@ -9,7 +9,7 @@ WriteMakefile
                            'Carp' => '0',
                            'Config::IniFiles' => '0',
                            'File::HomeDir' => '0.06',
-                           'File::Spec' => '0.88',
+                           'File::Spec' => '0',
                            'IO::File' => '0',
                            'LWP::Simple' => '0',
                            'Module::Pluggable' => '2.5',
@@ -19,7 +19,8 @@ WriteMakefile
                            'Sort::Versions' => '1.5',
                            'Test::More' => '0',
                            'Test::Reporter' => '1.25',
-                           'URI' => '0'
+                           'URI' => '0',
+                           'YAML' => '0'
                          },
           'INSTALLDIRS' => 'site',
           'PL_FILES' => {}

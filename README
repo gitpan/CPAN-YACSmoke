@@ -10,7 +10,9 @@ REQUIREMENTS
 
       CPANPLUS
       Config::IniFiles
+      File::Basename
       File::HomeDir
+      File::Path
       File::Spec
       IO::File
       LWP::Simple
@@ -97,15 +99,55 @@ DESCRIPTION
 	Given a list of distributions, indicates which ones would be excluded
 	from testing, based on the exclude_dist list that is created.
 
+    purge
+          perl -MCPAN::YACSmoke -e purge()
+
+          perl -MCPAN::YACSmoke -e purge('Some-Dist-0.01')
+
+	Purges the entries from the local cpansmoke database. The criteria for
+	purging is that a distribution must have a more recent version, which 
+	has previously been marked as a PASS. However, if one or more 
+	distributions are passed as a parameter list, those specific 
+	distributions will be purged.
+
+	If the flush_flag is set, via the config hash, to a true value, the 
+	directory path created for each older copy of a distribution is 
+	deleted.
+
+    flush
+          perl -MCPAN::YACSmoke -e flush()
+  
+          perl -MCPAN::YACSmoke -e flush('all')
+
+          perl -MCPAN::YACSmoke -e flush('old')
+
+	Removes unrequired build directories from the designated CPANPLUS 
+	build directory. Note that this deletes directories regardless of 
+	whether the associated distribution was tested.
+
+	Default flush is 'all'. The 'old' option will only delete the older 
+	distributions, of multiple instances of a distribution.
+
+	Note that this cannot be done reliably using last access or modify 
+	time, as the intention is for this distribution to be used on any OS 
+	that CPANPLUS is installed on. In this case not all OSs support the 
+	full range of return values from the stat function.
+
 REVISION HISTORY
     The following changes have been made since the previous publicly
     available version:
 
-    0.03_01 Sun Mar 20 2005
-        - updated Build.PL to recommend modules for testing
-	- ignore older versions (rt.cpan.org #11775)
-	- tell MakeMaker to use defaults via environment (rt.cpan.org #11528)
-	- corrected Build.PL abstract from 0.02_08
+    0.03_02 Mon Apr  4 2005
+        - added new purge() and flush() functions
+        - ability to specify local database file
+        - rebuilt excluded dist functions for reuse
+        - added 'allow_retries' configuration setting
+        - added 'flush_flag' configuration setting (used by purge())
+        - distributions with .tgz and .zip extensions now also supported
+        - cleaned up audit printing
+        - updated POD for plugins & bug reporting
+        - added examples/smoke-purge.pl script
+	- removed File::Spec minimum version since it limited platforms
 
     See the Changes file for a complete revision history.
 
