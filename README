@@ -1,0 +1,106 @@
+NAME
+    CPAN::YACSmoke - Yet Another CPAN Smoke Tester
+
+SYNOPSIS
+      perl -MCPAN::YACSmoke -e test
+
+REQUIREMENTS
+    This package requires the following modules (most of which are not
+    included with Perl):
+
+      CPANPLUS
+      File::HomeDir
+      File::Spec
+      IO::All
+      LWP::Simple
+      SDBM_File
+      Test::Reporter
+      URI
+
+Installation
+    Installation can be done using the traditional Makefile.PL or the
+    newer Build.PL methods.
+
+    Using Makefile.PL:
+
+      perl Makefile.PL
+      make
+      make test
+      make install
+
+    (On Windows platforms you should use nmake instead.)
+
+    Using Build.PL (if you have Module::Build installed):
+
+      perl Build.PL
+      perl Build
+      perl Build test
+      perl Build install
+
+DESCRIPTION
+    This module uses the backend of CPANPLUS to run tests on modules
+    recently uploaded to CPAN and post results to the CPAN Testers list.
+
+    It will create a database file in the .cpanplus directory which it uses
+    to track tested distributions. This information will be used to keep
+    from posting multiple reports for the same module, and to keep from
+    testing modules that use non-passing modules as prerequisites.
+
+    If it is given multiple versions of the same distribution to test, it
+    will test the most recent version only. If that version fails, then it
+    will test a previous version.
+
+    By default it uses CPANPLUS configuration settings.
+
+  EXPORTS
+    The following routines are exported by default. They are intended to be
+    called from the command-line, though they could be used from a script.
+
+    test
+          perl -MCPAN::YACSmoke -e test
+
+          perl -MCPAN::YACSmoke
+            -e test('authors/id/R/RR/RRWO/Some-Dist-0.01.tar.gz')
+
+        Runs tests on CPAN distributions. Arguments should be paths of
+        individual distributions in the author directories. If no arguments
+        are given, it will download the RECENT file from CPAN and use that.
+
+        By default it uses CPANPLUS configuration settings. If CPANPLUS is
+        set not to send test reports, then it will not send test reports.
+
+    mark
+          perl -MCPAN::YACSmoke -e mark('Some-Dist-0.01')
+
+          perl -MCPAN::YACSmoke -e mark('Some-Dist-0.01', 'fail')
+
+        Retrieves the test result in the database, or changes the test
+        result.
+
+        It can be useful to update the status of a distribution that once
+        failed or was untestable but now works, so as to test modules which
+        make use of it.
+
+CAVEATS
+    This is a proto-type release. Use with caution and supervision.
+
+    The current version has a very primitive interface and limited
+    functionality. Future versions may have a lot of options.
+
+    There is always a risk associated with automatically downloading and
+    testing code from CPAN, which could turn out to be malicious or severely
+    buggy. Do not run this on a critical machine.
+
+    This module uses the backend of CPANPLUS to do most of the work, so is
+    subject to any bugs of CPANPLUS.
+
+AUTHOR
+    Robert Rothenberg <rrwo at cpan.org>
+
+COPYRIGHT AND LICENSE
+    Copyright (C) 2005 by Robert Rothenberg. All Rights Reserved.
+
+    This library is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself, either Perl version 5.8.3 or, at
+    your option, any later version of Perl 5 you may have available.
+

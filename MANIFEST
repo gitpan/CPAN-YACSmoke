@@ -1,0 +1,9 @@
+Build.PL
+Changes
+Makefile.PL
+MANIFEST
+META.yml
+README
+t/CPAN-YACSmoke.t
+lib/CPAN/YACSmoke.pm
+SIGNATURE    Added here by Module::Build
