@@ -21,6 +21,9 @@ REQUIREMENTS
       Test::Reporter
       URI
 
+   These dependencies (such as CPANPLUS and Test::Reporter) may require
+   additional modules.
+
 Installation
     Installation can be done using the traditional Makefile.PL or the
     newer Build.PL methods.
@@ -97,6 +100,20 @@ DESCRIPTION
 REVISION HISTORY
     The following changes have been made since the previous publicly
     available version:
+
+    0.03    Tue Mar  1 2005
+	- minor fixes/tweaks
+
+    0.02_08 (Not publicly released.)
+        - fixed bug with install_prerequisites callback
+	- cleaned up Build.PL
+	- additional updates/corrects to POD
+	- patches from Barbie
+	- audit_log is in the base directory if no path is given
+	- uncompleted tests are marked 'aborted'
+	- additional logging
+	- minor tweaks to code
+	- added Barbie to author in Build.PL abstract
 
     0.02_06 Sat Feb 12 2005
 	- removed all plugins except default Recent

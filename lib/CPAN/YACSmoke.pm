@@ -34,8 +34,9 @@ use CPANPLUS::Backend 0.051;
 use CPANPLUS::Configure;
 use CPANPLUS::Error;
 
+use File::Basename;
 use File::HomeDir qw( home );
-use File::Spec::Functions qw( catfile );
+use File::Spec::Functions qw( splitpath catfile );
 use LWP::Simple;
 use POSIX qw( O_CREAT O_RDWR );         # for SDBM_File
 use Regexp::Assemble;
@@ -50,7 +51,7 @@ use Config::IniFiles;
 
 require Test::Reporter;
 
-our $VERSION = '0.02_06';
+our $VERSION = '0.03';
 $VERSION = eval $VERSION;
 
 require Exporter;
@@ -117,11 +118,13 @@ my $extn = qr/(?:\.(?:tar\.gz|tgz|zip))/;	# supported archive extensions
     return $self->{cpan} = $CpanPlus if ($CpanPlus);
 
     my $re = new Regexp::Assemble;
-    $re->add( @{ $self->{exclude_dists} } );
+    $re->add( @{$self->{exclude_dists}} );
 
     $CpanPlus = CPANPLUS::Backend->new();
 
     if ($CPANPLUS::Backend::VERSION >= 0.052) {
+
+      # TODO: if PASS included skipped tests, add a comment
 
       $CpanPlus->_register_callback(
         name => 'munge_test_report',
@@ -134,6 +137,8 @@ my $extn = qr/(?:\.(?:tar\.gz|tgz|zip))/;	# supported archive extensions
         },
       );
     }
+
+    # BUG: this callback does not seem to get called consistently, if at all.
 
     $CpanPlus->_register_callback(
       name => 'install_prerequisite',
@@ -148,15 +153,19 @@ my $extn = qr/(?:\.(?:tar\.gz|tgz|zip))/;	# supported archive extensions
 	  return;
 	}
 
-#	print Dump($obj); # (*)
 	unless ($TiedObj) {
-	  exit error("Not connected to database!");
+	  croak "Not connected to database!";
 	}
 	while (my $arg = shift) {
 	  $arg->package =~ m/^(.+)$extn$/;
 	  my $package = $1;
 
+	  # BUG: Exclusion does not seem to work for prereqs.
+	  # Sometimes it seems that the install_prerequisite
+	  # callback is not even called! Need to investigate.
+
 	  if ($package =~ $re->re) { # prereq on excluded list
+	    msg("Prereq $package is excluded");
 	    return;
 	  }
 
@@ -297,7 +306,10 @@ default setting is 100 distributions.
 
 sub new {
 	my $class = shift || __PACKAGE__;
-	## Ensure CPANPLUS knows we automated
+
+	## Ensure CPANPLUS knows we automated. (Q: Should we use Env::C to
+	## set this instead?)
+
 	$ENV{AUTOMATED_TESTING} = 1;
 
 	my $conf = connect_configure();
@@ -319,9 +331,10 @@ sub new {
 		$self->{$field} = $conf->get_conf($field) || 0;
 	}
 
+
 	## force overide of default settings
 	$self->{skiptest} = 0;
-	$self->{prereqs}  = 1;
+	$self->{prereqs}  = 2; # force to ask callback
 	
 	my %config = @_;
 
@@ -338,6 +351,14 @@ sub new {
 		my @list = $cfg->val( 'CONFIG', 'exclude_dists' );
 		$self->{exclude_dists} = [ @list ]	if(@list);
 	}
+
+	if ($self->{audit_log}) {
+	  my ($vol, $path, $file) = splitpath $self->{audit_log};
+	  unless ($vol || $path) {
+	    $self->{audit_log} = catfile($self->basedir(), $file);
+	  }
+	}
+
 
 	## command line switches override
 	foreach my $field (@CONFIG_FIELDS, 'audit_cb') {
@@ -377,8 +398,9 @@ sub new {
 
 
 sub DESTROY {
-	my $self = shift;
-	$self->disconnect_db();
+  my $self = shift;
+  $self->_audit("Disconnecting from database");
+  $self->disconnect_db();
 }
 
 =head2 METHODS
@@ -394,20 +416,21 @@ Obtains the users home directory
 # TODO: use CPANPLUS function
 
 sub homedir {
-	my $self = shift;
-	return $self->{homedir} = shift	if (@_);
+  my $self = shift;
+  return $self->{homedir} = shift	if (@_);
 
-	unless (defined $self->{homedir}) {
-		if ($^O eq "MSWin32") { # bug in File::HomeDir <= 0.06
-			$self->{homedir} =	$ENV{HOME}						 ||
-								($ENV{HOMEDRIVE}.$ENV{HOMEPATH}) ||
-								$ENV{USERPROFILE}                ||
-								home();
-		} else {
-			$self->{homedir} = home();
-		}
-	}
-	return $self->{homedir};
+  unless (defined $self->{homedir}) {
+    if ($^O eq "MSWin32") { # bug in File::HomeDir <= 0.06
+      $self->{homedir} = $ENV{HOME}      ||
+	($ENV{HOMEDRIVE}.$ENV{HOMEPATH}) ||
+	  $ENV{USERPROFILE}              ||
+	    home();
+    } else {
+      $self->{homedir} = home();
+    }
+  }
+  $self->_audit("homedir = " . $self->{homedir});
+  return $self->{homedir};
 }
 
 =item basedir
@@ -419,80 +442,80 @@ Obtains the base directory for downloading and testing distributions.
 =cut 
 
 sub basedir {
-	my $self = shift;
-	return $self->{basedir} = shift	if (@_);
+  my $self = shift;
+  return $self->{basedir} = shift if (@_);
 
-	unless (defined $self->{basedir}) {
-		$self->{basedir} = $self->{conf}->get_conf("base") || $self->homedir();
-	}
-    return $self->{basedir};
+  unless (defined $self->{basedir}) {
+    $self->{basedir} = $self->{conf}->get_conf("base") || $self->homedir();
+  }
+  return $self->{basedir};
 }
 
 sub _remove_excluded_dists {
-	my $self = shift;
-	my @dists = ( );
-	my $removed = 0;
+  my $self = shift;
+  my @dists = ( );
+  my $removed = 0;
 
-	my $re = new Regexp::Assemble;
-	$re->add( @{ $self->{exclude_dists} } );
+  my $re = new Regexp::Assemble;
+  $re->add( @{ $self->{exclude_dists} } );
 
-	while (my $dist = shift) {
-		if ($dist =~ $re->re) {
-			chomp($dist);
-			$self->_track("Excluding $dist");
-			$removed = 1;
-		} else {
-			push @dists, $dist;
-		}
-	}
-	$self->_audit('')	if($removed);
-	return @dists;
+  while (my $dist = shift) {
+    if ($dist =~ $re->re) {
+      chomp($dist);
+      $self->_track("Excluding $dist");
+      $removed = 1;
+    } else {
+      push @dists, $dist;
+    }
+  }
+  $self->_audit('')	if($removed);
+  return @dists;
 }
 
 sub _build_path_list {
-	my $self = shift;
-	my $ignored = 0;
+  my $self = shift;
+  my $ignored = 0;
 
-	my %paths = ( );
-	while (my $line = shift) {
-		if ($line =~ /^(.*)\-(.+)(\.tar\.gz)$/) {
-			my $dist = $1;
-			my @dirs = split /\/+/, $dist;
-			my $ver  = $2;
+  my %paths = ( );
+  while (my $line = shift) {
+    if ($line =~ /^(.*)\-(.+)(\.tar\.gz)$/) {
+      my $dist = $1;
+      my @dirs = split /\/+/, $dist;
+      my $ver  = $2;
 
-			# due to rt.cpan.org bugs #11093, #11125 in CPANPLUS
+      # due to rt.cpan.org bugs #11093, #11125 in CPANPLUS
 
-			if ($self->{ignore_cpanplus_bugs} || (
-				(@dirs == 4) && ($ver =~ /^[\d\.\_]+$/)) ) {
+      if ($self->{ignore_cpanplus_bugs} || (
+	   (@dirs == 4) && ($ver =~ /^[\d\.\_]+$/)) ) {
 
-				if (exists $paths{$dist}) {
-					unshift @{ $paths{$dist} }, $ver;
-				} else {	
-					$paths{$dist} = [ $ver ];
-				}
-
-			} else {
-				$self->_track("Ignoring $dist-$ver (due to CPAN+ bugs)");
-				$ignored = 1;
-			}
-
-		# check for previously parsed package string
-		} elsif($line =~ /^(.*)\-(.+)$/) {
-			my $dist = $1;
-			my @dirs = split /\/+/, $dist;
-			my $ver  = $2;
-
-			if(@dirs == 1) {	# previously parsed
-				if (exists $paths{$dist}) {
-					unshift @{ $paths{$dist} }, $ver;
-				} else {	
-					$paths{$dist} = [ $ver ];
-				}
-			}
-		}
+	if (exists $paths{$dist}) {
+	  unshift @{ $paths{$dist} }, $ver;
+	} else {	
+	  $paths{$dist} = [ $ver ];
 	}
-	$self->_audit('')	if($ignored);
-	return %paths;
+
+      } else {
+	$self->_track("Ignoring $dist-$ver (due to CPAN+ bugs)");
+	$ignored = 1;
+      }
+
+      # check for previously parsed package string
+    } elsif ($line =~ /^(.*)\-(.+)$/) {
+      my $dist = $1;
+      my @dirs = split /\/+/, $dist;
+      my $ver  = $2;
+
+      if (@dirs == 1) {		# previously parsed
+	if (exists $paths{$dist}) {
+	  unshift @{ $paths{$dist} }, $ver;
+	} else {	
+	  $paths{$dist} = [ $ver ];
+	}
+      }
+    }
+  }
+  $self->_audit('')	if($ignored);
+  return %paths;
 }
 
 =head1 PROCEDURAL INTERFACE
@@ -563,57 +586,70 @@ sub test {
 		# only want to test the latest one. If it fails, then we'll
 		# check previous distributions.
 
-		my $passed     = 0;
-		my $fail_count = 0;
+    my $passed     = 0;
+    my $fail_count = 0;
 
-		while ( (!$passed) && ($fail_count < $smoker->{fail_max}) &&
-				(my $ver = shift @versions) ) {
-			my $distpathver = join("-", $distpath, $ver);
-			my $distver     = join("-", $dist,     $ver);
+    # TODO - if test fails due to bad prereqs, set $fail_count to
+    # fail_max and abort testing versions (based on an option)
 
-			my $grade = $smoker->{checked}->{$distver}
-			  || 'ungraded';
+    while ( (!$passed) && ($fail_count < $smoker->{fail_max}) &&
+	    (my $ver = shift @versions) ) {
+      my $distpathver = join("-", $distpath, $ver);
+      my $distver     = join("-", $dist,     $ver);
 
-			if ((!defined $grade) ||
-			  $grade =~ /unknown|ungraded|none/) {
+      my $grade = $smoker->{checked}->{$distver}
+	|| 'ungraded';
 
-			  my $mod = $smoker->{cpan}->parse_module( module => $distpathver)
-			    or error("Invalid distribution $distver\n");
+      if ((!defined $grade) ||
+	  $grade =~ /(unknown|ungraded|none)/) {
 
-				if ($mod && (!$mod->is_bundle)) {
-					$smoker->_audit("\n".('-'x40)."\n");
-					$smoker->_track("Testing $distpathver");
-					$smoker->{test_max}--;
+	my $mod = $smoker->{cpan}->parse_module( module => $distpathver)
+	  or error("Invalid distribution $distver\n");
 
-					eval {
+	if ($mod && (!$mod->is_bundle)) {
+	  $smoker->_audit("\n".('-'x40)."\n");
+	  $smoker->_track("Testing $distpathver");
+	  $smoker->{test_max}--;
 
-					  CPANPLUS::Error->flush();
+	  eval {
+			      
+	    CPANPLUS::Error->flush();
 
-	my $stat = $smoker->{cpan}->install( 
-		modules  => [ $mod ],
+	    # TODO: option to not re-test prereqs that are known to
+	    # pass (maybe if we use DBD::SQLite for the database and
+	    # mark the date of the result?)
+
+	    my $stat = $smoker->{cpan}->install( 
+	  	modules  => [ $mod ],
 		target   => 'create',
 		allow_build_interactively => 0,
 		# other settings not set via set_confi() method
-	);
+            );
 
-	$smoker->_audit(CPANPLUS::Error->stack_as_string());
+	    # TODO: check the $stat and react appropriately
 
-	$smoker->{checked}->{$distver} = 'ungraded'	
-		unless ($grade = $smoker->{checked}->{$distver});
-	$passed = ($grade eq 'pass');
+	    $smoker->_audit(CPANPLUS::Error->stack_as_string());
 
-	$smoker->_audit("\nReport Grade for $distver is ".uc($smoker->{checked}->{$distver})."\n");
+	    # TODO: option to mark uncompleted tests as aborted vs ungraded
 
-					}; # end eval block
-				}
-			} else {
-				$passed = ($grade eq 'pass');
-				$smoker->_audit("$distpathver already tested and graded ".uc($grade)."\n");
-			}
-			$fail_count++, unless ($passed);
-		}
+	    $grade  = ($smoker->{checked}->{$distver} ||= 'aborted');
+	    $passed = ($grade eq 'pass');
+
+	    $smoker->_audit("\nReport Grade for $distver is ".uc($smoker->{checked}->{$distver})."\n");
+
+	  }; # end eval block
 	}
-	$smoker = undef;
+      } else {
+	$passed = ($grade eq 'pass');
+	$smoker->_audit("$distpathver already tested and graded ".uc($grade)."\n");
+      }
+      $fail_count++, unless ($passed);
+    }
+  }
+  $smoker = undef;
+
+  # TODO: repository fills up. An option to flush it is needed.
+
 }
 
 =item mark( [ %config, ] $dist [, $grade ] ] )
@@ -630,6 +666,7 @@ make use of it.
 
 Grades can be one of (case insensitive):
 
+  aborted
   pass
   fail
   unknown
@@ -700,30 +737,35 @@ For further use of configuration settings see the new() constructor.
 =cut
 
 sub excluded {
-	my $smoker;
-	eval {
-		if ((ref $_[0]) && $_[0]->isa(__PACKAGE__)) {
-			$smoker = shift;
-		}
-	};
-	my %config = ref($_[0]) eq 'HASH' ? %{ shift() } : ();
-	$smoker ||= __PACKAGE__->new(%config);
+  my $smoker;
+  eval {
+    if ((ref $_[0]) && $_[0]->isa(__PACKAGE__)) {
+      $smoker = shift;
+    }
+  };
+  my %config = ref($_[0]) eq 'HASH' ? %{ shift() } : ();
+  $smoker ||= __PACKAGE__->new(%config);
 
-	$smoker->_audit("\n\n".('-'x40)."\n");
+  $smoker->_audit("\n\n".('-'x40)."\n");
 
-	my @distros = @_;
-	unless (@distros) {
-		@distros = $smoker->{plugin}->download_list();
-		unless (@distros) {
-			exit err("No new distributions uploaded to be tested");
-		}
-	}
+  my @distros = @_;
+  unless (@distros) {
+    @distros = $smoker->{plugin}->download_list();
+    unless (@distros) {
+      exit err("No new distributions uploaded to be tested");
+    }
+  }
 
-	my @dists = $smoker->_remove_excluded_dists( @distros );
-	$smoker->_audit('EXCLUDED: '.(scalar(@distros) - scalar(@dists))." distributions\n\n");
-	$smoker = undef;
-	return @dists;
+  my @dists = $smoker->_remove_excluded_dists( @distros );
+  $smoker->_audit('EXCLUDED: '.(scalar(@distros) - scalar(@dists))." distributions\n\n");
+  $smoker = undef;
+  return @dists;
 }
+
+# TODO: a method to purge older versions of test results from Checked
+# database. (That is, if the latest version tested is 1.23, we don't
+# need to keep earlier results around.)  There should be an option to
+# disable this behaviour.
 
 ## Private Methods
 
@@ -734,20 +776,20 @@ sub _track {
 }
 
 sub _debug {
-	my ($self,$message) = @_;
-	return	unless($self->{debug});
-	$self->_audit($message);
+  my ($self,$message) = @_;
+  return unless($self->{debug});
+  $self->_audit($message);
 }
 
 sub _audit {
-	my $self = shift;
-	$self->{audit_cb}->(@_)	if($self->{audit_cb});
-	return	unless($self->{audit_log});
+  my $self = shift;
+  $self->{audit_cb}->(@_)	if($self->{audit_cb});
+  return	unless($self->{audit_log});
 
-	my $FH = IO::File->new(">>".$self->{audit_log})
-		or exit error("Failed to write to file [$self->{audit_log}]: $!\n");
-	print $FH join("\n",@_) . "\n";
-	$FH->close;
+  my $FH = IO::File->new(">>".$self->{audit_log})
+    or exit error("Failed to write to file [$self->{audit_log}]: $!\n");
+  print $FH join("\n",@_) . "\n";
+  $FH->close;
 }
 
 1;
@@ -776,93 +818,6 @@ Pass through configuration settings:
  	  recent_list_age => '',
 	  recent_list_path => '.'
   };
-
-=head2 Outlook
-
-The Outlook plugin uses a mailbox via the Outlook mail client to return
-the current list of distributions
-
-Pass through configuration settings:
-
-  %config = {
-	  list_from => 'Outlook',
- 	  mailbox => 'CPAN Testers'
-  };
-
-Note that the mailbox needs to be in a folder below 'Inbox'.
-
-In order to use this plugin you will need to install the following
-modules:
-
-  Win32::OLE
-  Win32::OLE::Const
-
-=head2 NNTPWeb
-
-The NNTP plugin uses the webpages that are available at 
-http://www.nntp.perl.org/group/perl.cpan.testers/ to return
-the current list of distributions
-
-Pass through configuration settings:
-
-  %config = {
-	  list_from => 'NNTPWeb',
-	  nntp_id => $nntp_id
-  };
-
-In order to use this plugin you will need to install the following
-modules:
-
-  WWW::Mechanize
-  Template::Extract
-
-=head2 NNTP
-
-The NNTP plugin access the USENET group directly to return
-the current list of distributions
-
-Pass through configuration settings:
-
-  %config = {
-	  list_from => 'NNTP',
-	  nntp_id => $nntp_id
-  };
-
-In order to use this plugin you will need to install the following
-modules:
-
-  Net::NNTP
-
-=head2 WebList
-
-The WebList plugin accesses a formatted webpage to return
-the current list of distributions. The current pages which provide
-this list in correct format are cycled through, unless a specific
-webpage is requested.
-
-Currently used webpages:
-
-  http://cpan.uwinnipeg.ca/recent
-
-Note that the following webpages do not provide a 'download' link,
-which can identify the exact distribution. Further checking may be
-added in the future.
-
-  http://search.cpan.org/recent
-  http://use.perl.org/modulelist/
-
-Pass through configuration settings:
-
-  %config = {
-	  list_from => 'WebList',
- 	  webpath => 'http://cpan.uwinnipeg.ca/recent'
-  };
-
-In order to use this plugin you will need to install the following
-modules:
-
-  WWW::Mechanize
-  Template::Extract
 
 =head2 Writing A Plugin
 

@@ -1,20 +1,16 @@
 --- #YAML:1.0
 name: CPAN-YACSmoke
-version: 0.02_06
+version: 0.03
 author:
   - Robert Rothenberg <rrwo at cpan.org>
 abstract: Yet Another CPAN Smoke Tester
 license: perl
 requires:
   CPANPLUS: 0.051
-  CPANPLUS::Backend: 0
-  CPANPLUS::Configure: 0
-  CPANPLUS::Error: 0
   Carp: 0
   Config::IniFiles: 0
   File::HomeDir: 0.06
   File::Spec: 0.88
-  File::Spec::Functions: 0
   IO::File: 0
   LWP::Simple: 0
   Module::Pluggable: 2.5
@@ -26,14 +22,15 @@ requires:
   URI: 0
   perl: 5.6.1
 recommends:
-  CPANPLUS: 0.052
+  CPANPLUS: 0.053
   Test::Reporter: 1.27
+  YAML: 0.35
 build_requires:
   Test::More: 0
 provides:
   CPAN::YACSmoke:
     file: lib/CPAN/YACSmoke.pm
-    version: 0.02_06
+    version: 0.03
   CPAN::YACSmoke::Plugin::Recent:
     file: lib/CPAN/YACSmoke/Plugin/Recent.pm
     version: 0.02

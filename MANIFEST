@@ -1,6 +1,6 @@
 Build.PL
 Changes
-cpansmoke.pl
+examples/cpansmoke.pl
 examples/smoke-reports.pl
 Makefile.PL
 MANIFEST
@@ -17,4 +17,5 @@ t/22exclude.t
 t/30object.t
 t/90podtest.t
 t/config.ini
+SIGNATURE    Added here by Module::Build
 SIGNATURE    Added here by Module::Build
