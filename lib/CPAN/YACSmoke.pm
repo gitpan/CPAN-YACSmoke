@@ -51,7 +51,7 @@ use Config::IniFiles;
 
 require Test::Reporter;
 
-our $VERSION = '0.03';
+our $VERSION = '0.03_01';
 $VERSION = eval $VERSION;
 
 require Exporter;
@@ -310,7 +310,8 @@ sub new {
 	## Ensure CPANPLUS knows we automated. (Q: Should we use Env::C to
 	## set this instead?)
 
-	$ENV{AUTOMATED_TESTING} = 1;
+	$ENV{AUTOMATED_TESTING}   = 1;
+        $ENV{PERL_MM_USE_DEFAULT} = 1; # despite verbose setting
 
 	my $conf = connect_configure();
 
@@ -335,6 +336,8 @@ sub new {
 	## force overide of default settings
 	$self->{skiptest} = 0;
 	$self->{prereqs}  = 2; # force to ask callback
+
+	# TODO: option to skip tests if module has previously passed
 	
 	my %config = @_;
 
@@ -600,8 +603,10 @@ sub test {
       my $grade = $smoker->{checked}->{$distver}
 	|| 'ungraded';
 
-      if ((!defined $grade) ||
-	  $grade =~ /(unknown|ungraded|none)/) {
+      if ((!defined $grade) || $grade =~ /(ungraded|none)/) {
+
+	# We no longer re-test 'unknown' since that rating is reserved
+	# for modules with no tests.
 
 	my $mod = $smoker->{cpan}->parse_module( module => $distpathver)
 	  or error("Invalid distribution $distver\n");
@@ -622,8 +627,8 @@ sub test {
 	    my $stat = $smoker->{cpan}->install( 
 	  	modules  => [ $mod ],
 		target   => 'create',
-		allow_build_interactively => 0,
-		# other settings not set via set_confi() method
+		allow_build_interactively => 0, # See rt.cpan.org 11710
+		# other settings not set via set_config() method
             );
 
 	    # TODO: check the $stat and react appropriately
@@ -644,6 +649,15 @@ sub test {
 	$smoker->_audit("$distpathver already tested and graded ".uc($grade)."\n");
       }
       $fail_count++, unless ($passed);
+
+      # Mark older versions so that they are not tested
+      if ($passed) {
+	while (my $ver = shift @versions) {
+	  my $distver = join("-", $dist, $ver);
+	  $smoker->{checked}->{$distver} = "unknown";
+	}
+      }
+
     }
   }
   $smoker = undef;

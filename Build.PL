@@ -23,6 +23,8 @@ my $build = Module::Build->new
      },
      recommends => {
        'CPANPLUS'                   => 0.053,
+       'Test::Pod'                  => 1.00,
+       'Test::Prereq'               => 0,
        'Test::Reporter'             => 1.27,
        'YAML'                       => 0.35, #
      },
@@ -31,7 +33,7 @@ my $build = Module::Build->new
      },
      create_makefile_pl => 'traditional',
      create_readme      => 0,
-     dist_author        => 'Robert Rothenberg <rrwo at cpan.org>',
+     dist_author        => 'Robert Rothenberg <rrwo at cpan.org>, Barbie <barbie at cpan.org>',
      sign               => 1,
 );
 

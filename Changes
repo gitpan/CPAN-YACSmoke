@@ -1,5 +1,11 @@
 Revision history for Perl extension CPAN::YACSmoke.
 
+0.03_01 Sun Mar 20 2005
+        - updated Build.PL to recommend modules for testing
+	- ignore older versions (rt.cpan.org #11775)
+	- tell MakeMaker to use defaults via environment (rt.cpan.org #11528)
+	- corrected Build.PL abstract from 0.02_08
+
 0.03    Tue Mar  1 2005
 	- minor fixes/tweaks
 
