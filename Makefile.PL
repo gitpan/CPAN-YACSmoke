@@ -15,6 +15,7 @@ WriteMakefile
                            'IO::All' => '0.31',
                            'LWP::Simple' => '0',
                            'POSIX' => '0',
+                           'Regexp::Assemble' => '0.06',
                            'SDBM_File' => '0',
                            'Test' => '0',
                            'Test::Reporter' => '1.25',

@@ -16,6 +16,7 @@ my $build = Module::Build->new
        'IO::All'                    => 0.31,
        'LWP::Simple'                => 0,
        'POSIX'                      => 0,
+       'Regexp::Assemble'           => 0.06,
        'SDBM_File'                  => 0,
        'Test::Reporter'             => 1.25,
        'URI'                        => 0,

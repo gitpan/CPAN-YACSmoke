@@ -13,6 +13,7 @@ REQUIREMENTS
       File::Spec
       IO::All
       LWP::Simple
+      Regexp::Assemble
       SDBM_File
       Test::Reporter
       URI
@@ -81,6 +82,18 @@ DESCRIPTION
         failed or was untestable but now works, so as to test modules which
         make use of it.
 
+REVISION HISTORY
+    The following changes have been made since the previous version:
+
+    0.02  Sun Jan 23 2005
+	- added option to exclude distros based on regexes
+        * uses Regexp::Assemble
+	- options can be passed to new, test, mark methods
+	- various code comments/tweaks
+	- some messages only shown when verbose is set
+
+    See the Changes file for a complete revision history.
+
 CAVEATS
     This is a proto-type release. Use with caution and supervision.
 
@@ -93,6 +106,8 @@ CAVEATS
 
     This module uses the backend of CPANPLUS to do most of the work, so is
     subject to any bugs of CPANPLUS.
+
+    And yes, it's sorely in need of documentation.
 
 AUTHOR
     Robert Rothenberg <rrwo at cpan.org>

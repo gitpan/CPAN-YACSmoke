@@ -39,13 +39,14 @@ use File::Spec::Functions qw( catfile );
 use IO::All;
 use LWP::Simple;
 use POSIX qw( O_CREAT O_RDWR );         # for SDBM_File
+use Regexp::Assemble;
 use SDBM_File;
 use URI;
 
 require Test::Reporter;
 
-our $VERSION = '0.01';
-$VERSION = eval $VERSION;
+our $VERSION = '0.02';
+# $VERSION = eval $VERSION;
 
 require Exporter;
 
@@ -197,6 +198,13 @@ sub basedir {
 
 }
 
+my @CONFIG_FIELDS = qw(
+  verbose debug force cpantest
+  recent_list_age ignore_cpanplus_bugs fail_max
+  exclude_dists
+);
+
+
 sub new {
   my $class = shift || __PACKAGE__;
 
@@ -205,15 +213,24 @@ sub new {
   my $self  = {
     conf                 => $conf,
     checked              => undef,
-    verbose              => $conf->get_conf("verbose")  || 0,
-    debug                => $conf->get_conf("debug")    || 0,
-    force                => $conf->get_conf("force")    || 0,
-    cpantest             => $conf->get_conf("cpantest") || 0,
     recent_list_age      => 1,
     recent_list_path     => undef,
     ignore_cpanplus_bugs => 0,
-    fail_max             => 3, # max failed versions to try
+    fail_max             => 3,     # max failed versions to try
+    exclude_dists        => [ ],   # Regexps to exclude
   };
+
+  foreach my $field (qw( verbose debug force cpantest )) {
+    $self->{$field} = $conf->get_conf($field) || 0;
+  }
+
+  my %config = @_;
+  foreach my $field (@CONFIG_FIELDS) {
+    if (exists $config{$field}) {
+      $self->{$field} = $config{$field};
+    }
+  }
+
   bless $self, $class;
 
   $self->connect_db();
@@ -256,6 +273,26 @@ sub download_recent_list {
   return;
 }
 
+sub _remove_excluded_dists {
+  my $self = shift;
+  my @dists = ( );
+
+  my $re = new Regexp::Assemble;
+  $re->add( @{ $self->{exclude_dists} } );
+
+  while (my $dist = shift) {
+    if ($dist =~ $re->re) {
+      chomp($dist);
+      msg("Excluding $dist", $self->{verbose});
+    } else {
+      push @dists, $dist;
+    }
+  }
+  return @dists;
+}
+
+# TODO: paths should not require initial "author/id/"
+
 sub _build_path_list {
   my $self = shift;
 
@@ -278,7 +315,7 @@ sub _build_path_list {
 	}
       }
       else {
-	msg("Ignoring $dist-$ver (due to CPAN++ bugs)");
+	msg("Ignoring $dist-$ver (due to CPAN+ bugs)");
       }
     }
   }
@@ -311,9 +348,24 @@ not to send test reports, then it will not send test reports.
 =cut
 
 sub test {
-  my $smoker = (ref $_[0]) ? shift :  __PACKAGE__->new();
-  unless ($smoker->isa(__PACKAGE__)) {
-    exit err("Invalid object");
+  my $smoker;
+  eval {
+    if ((ref $_[0]) && $_[0]->isa(__PACKAGE__)) {
+      $smoker = shift;
+    }
+  };
+  $smoker ||= __PACKAGE__->new();
+
+  my %config = ( );
+  if ((ref $_[0]) eq 'HASH') {
+    %config = %{ shift() };
+  }
+
+  foreach my $field (@CONFIG_FIELDS) {
+    if (exists $config{$field}) {
+      ($smoker->{$field}, $config{$field}) =
+	($config{$field}, $smoker->{$field});
+    }
   }
 
   my @distros = @_;
@@ -327,9 +379,11 @@ sub test {
 	io($recent_list_path)->slurp();
   }
 
-  my %paths = $smoker->_build_path_list( @distros );
+  my %paths = $smoker->_build_path_list(
+                $smoker->_remove_excluded_dists( @distros )
+  );
 
-    foreach my $distpath (sort keys %paths) {
+  foreach my $distpath (sort keys %paths) {
       my @versions = @{ $paths{$distpath} };
       my @dirs     = split /\/+/, $distpath;
       my $dist     = $dirs[-1];
@@ -353,7 +407,7 @@ sub test {
 
 	  if ($mod && (!$mod->is_bundle)) {
 
-	    msg("Testing $distpathver");
+	    msg("Testing $distpathver", $smoker->{verbose});
 
 	    eval {
 	      CPANPLUS::Error->flush();
@@ -403,10 +457,26 @@ make use of it.
 =cut
 
 sub mark {
-  my $smoker = (ref $_[0]) ? shift :  __PACKAGE__->new();
-  unless ($smoker->isa(__PACKAGE__)) {
-    exit err("Invalid object");
+  my $smoker;
+  eval {
+    if ((ref $_[0]) && $_[0]->isa(__PACKAGE__)) {
+      $smoker = shift;
+    }
+  };
+  $smoker ||= __PACKAGE__->new();
+
+  my %config = ( );
+  if ((ref $_[0]) eq 'HASH') {
+    %config = %{ shift() };
   }
+
+  foreach my $field (@CONFIG_FIELDS) {
+    if (exists $config{$field}) {
+      ($smoker->{$field}, $config{$field}) =
+	($config{$field}, $smoker->{$field});
+    }
+  }
+
   my $distver = shift || "";
   my $grade   = shift || "";
   if ($grade) {
