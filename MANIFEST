@@ -1,9 +1,20 @@
 Build.PL
 Changes
+cpansmoke.pl
+examples/smoke-reports.pl
 Makefile.PL
 MANIFEST
 META.yml
 README
-t/CPAN-YACSmoke.t
 lib/CPAN/YACSmoke.pm
+lib/CPAN/YACSmoke/Plugin/Recent.pm
+lib/CPAN/YACSmoke/Plugin/SmokeDB.pm
+t/00basics.t
+t/13recent.t
+t/20test.t
+t/21mark.t
+t/22exclude.t
+t/30object.t
+t/90podtest.t
+t/config.ini
 SIGNATURE    Added here by Module::Build
