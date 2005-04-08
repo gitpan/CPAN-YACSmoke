@@ -1,0 +1,83 @@
+=pod
+
+=head1 NAME
+
+CPAN::YACSmoke::FAQ - YACSmoke Frequently Asked Questions
+
+=head1 QUESTIONS
+
+=head2 General Questions
+
+=over
+
+=item YACSmoke does/does not ...
+
+YACSmoke uses L<CPANPLUS::Backend> to download, extract, and test packages
+and send out the reports.  The advantage is that we don't have to re-write
+duplicate code.  The disadvantage is that some of the bugs in CPANPLUS will
+affect CPAN::YACSmoke as well. 
+
+=back
+
+=head2 Module Authors
+
+=over
+
+=item How can I tell if my module is being tested by YACSmoke?
+
+Your module should check if the AUTOMATED_TESTING envornment variable
+is set:
+
+  if ($ENV{AUTOMATED_TESTING}) { ... }
+
+=item What if my module needs user input for testing?
+
+There are several solutions:
+
+=over
+
+=item *
+
+Use an environment variable or cross-platform method of locating a
+configuration file that has the information you need.
+
+=item *
+
+Skip all tests that need this input if C<$ENV{AUTOMATED_TESTING}> is set,
+and live with the fact that automated smoke tests for your module won't
+be thorough.
+
+=item *
+
+You can use a package such as L<Test::Expect> to test automated interactive
+sessions.  (Note that Test::Expect may not run on every platform, so you
+should skip the tests if it is not installed.)
+
+For Windows programs which use a graphical interface, there's also
+L<Win32::GuiTest>.
+
+=item *
+
+Include sample data to test against if no user data is available.
+
+=back
+
+=item Why should I care if your (explitive) OS doesn't have (feature)?
+
+See L<perlport> - Writing portable Perl.
+
+=item How can I get YACSmoke to issue an NA report?
+
+YACSmoke relies on CPANPLUS to determine that. Currently (CPANPLUS version
+0.053) looks at the module name: if it begins with a platform name such
+as "Win32" or "Solaris", then it issues an "NA" (Not Applicable) report.
+
+We are looking into ways to allow tests to issue NA results rather
+than relying on package names.
+
+=back
+
+=head1 SEE ALSO
+
+
+=cut

@@ -53,7 +53,7 @@ use Config::IniFiles;
 require Test::Reporter;
 require YAML;
 
-our $VERSION = '0.03_04';
+our $VERSION = '0.03_05';
 $VERSION = eval $VERSION;
 
 require Exporter;
@@ -122,7 +122,9 @@ my $extn = qr/(?:\.(?:tar\.gz|tgz|zip))/;	# supported archive extensions
     my $self = shift;
     return $self->{cpan} = $CpanPlus if ($CpanPlus);
 
-    $CpanPlus = CPANPLUS::Backend->new();
+    my $conf = shift;
+
+    $CpanPlus = CPANPLUS::Backend->new($conf);
 
     if ($CPANPLUS::Backend::VERSION >= 0.052) {
 
@@ -173,7 +175,7 @@ my $extn = qr/(?:\.(?:tar\.gz|tgz|zip))/;	# supported archive extensions
 
 		  my $checked = $Checked{$package};
 		  if (defined $checked &&
-			  $checked =~ /aborted|fail|unknown|na|ungraded/ ) {
+			  $checked =~ /aborted|fail|na/ ) {
 
 			if ($self->{ignore_bad_prereqs}) {
 			  msg("Known uninstallable prereqs $package - may have problems\n");
@@ -205,12 +207,14 @@ my $extn = qr/(?:\.(?:tar\.gz|tgz|zip))/;	# supported archive extensions
 
 		  return unless ($self->{cpantest});
 
+                  # Simplified algorithm for reporting: don't send a report
+                  # if we get the same results as the last report sent, or
+                  # if we it passed last test but not now, or it passed now
+                  # but not the last test.
+
 		  return if (defined $checked && (
-				  ($checked eq 'aborted' &&  $grade ne 'pass')     ||
-				  ($checked eq 'unknown'  && $grade eq 'unknown')  ||
-				  ($checked eq 'ungraded' && $grade eq 'fail')     ||
-				  ($checked =~ /pass|na/)                          ||
-				  ($checked eq 'fail' && $grade =~ /unknown|na|fail/)));
+                    ($checked eq $grade)                     ||
+		    ($checked ne 'pass' && $grade ne 'pass')));
 
 		  $Checked{$package} = $grade;
 
@@ -232,19 +236,20 @@ my $extn = qr/(?:\.(?:tar\.gz|tgz|zip))/;	# supported archive extensions
   }
 }
 
-my @CONFIG_FIELDS = qw(
-	verbose debug force cpantest
+my @CPANPLUS_FIELDS = qw(
+	verbose debug force cpantest 
+	prereqs skiptest
+        prefer_bin prefer_makefile
+        makeflags makemakerflags
+        md5 signature
+);
+
+my @CONFIG_FIELDS = (@CPANPLUS_FIELDS, qw(
 	recent_list_age ignore_cpanplus_bugs fail_max
 	exclude_dists test_max audit_log
 	ignore_bad_prereqs report_pass_only
 	allow_retries flush_flag
-);
-
-my @CPANPLUS_FIELDS = qw(
-	verbose debug force cpantest 
-	prereqs skiptest
-
-);
+));
 
 
 =item new( [ %config ] )
@@ -254,7 +259,8 @@ functions of the procedural interface. However, it can be accessed
 with a set of configuration settings to extend the capabilities of
 the package.
 
-Configuration settings are:
+CPANPLUS configuration settings (inherited from CPANPLUS unless
+otherwise noted) are:
 
   verbose
   debug 
@@ -262,6 +268,15 @@ Configuration settings are:
   cpantest
   report_pass_only
   prereqs
+  prefer_bin
+  prefer_makefile    - enabled by default
+  makeflags
+  makemakerflags
+  md5
+  signature
+
+CPAN::YACSmoke configuration settings are:
+
   ignore_cpanplus_bugs
   ignore_bad_prereqs
   fail_max
@@ -302,12 +317,24 @@ tested in a single run. As some distributions can take some time to be
 tested, it may be more suitable to run in small batches at a time. The
 default setting is 100 distributions.
 
-The setting 'allow_retries' defaults to include grades of NONE, UNGRADED
+The setting 'allow_retries' defaults to include grades of UNGRADED, IGNORED
 and ABORTED. If you wish to change this, for example to only allow grades
-of NONE and UNGRADED to be retried, you can specify as:
+of UNGRADED to be retried, you can specify as:
 
   [CONFIG]
-  allow_retries=none|ungraded
+  allow_retries=ungraded
+
+Often module authors prefer to see the details of failed tests. You can
+make this the default setting using:
+
+  [CONFIG]
+  makeflags=TEST_VERBOSE=1
+
+Note that sending verbose failure reports for packages with thousands
+of tests will be quite large (!), and may be blocked by mail and news
+servers.
+
+See L<Config::IniFiles> for more information on the INI file format.
 
 =back
 
@@ -326,26 +353,39 @@ sub new {
 
 	## set internal defaults
 	my $self  = {
-		conf                 => $conf,
+                conf                 => $conf,
 		checked              => undef,
 		ignore_cpanplus_bugs => ($CPANPLUS::Backend::VERSION >= 0.052),
 		fail_max             => 3,     # max failed versions to try
 		exclude_dists        => [ ],   # Regexps to exclude
 		test_max             => 100,   # max distributions per run
-		allow_retries		 => 'none|ungraded|aborted',
+		allow_retries        => 'aborted|ungraded',
 	};
 
 	bless $self, $class;
 
 	## set from CPANPLUS defaults
 	foreach my $field (@CPANPLUS_FIELDS) {
-		$self->{$field} = $conf->get_conf($field) || 0;
+	  $self->{$field} = $conf->get_conf($field);
 	}
 
 
 	## force overide of default settings
+
 	$self->{skiptest} = 0;
 	$self->{prereqs}  = 2; # force to ask callback
+
+        # Makefile.PL shows which tests failed, whereas Build.PL does
+        # not when reports are sent through CPANPLUS 0.053, hence the
+        # prefer_makefile=1 default.
+
+        $self->{prefer_makefile} = 1;
+
+        # If we have TEST_VERBOSE=1 by default, then many FAIL reports
+        # will be huge. A lot of module authors will want that, but
+        # it's not the best idea to send those out immediately.
+
+        ## $self->{makeflags} = 'TEST_VERBOSE=1';
 	
 	my %config = @_;
 
@@ -356,8 +396,10 @@ sub new {
 	if($config{config_file} && -r $config{config_file}) {
 		my $cfg = Config::IniFiles->new(-file => $config{config_file});
 		foreach my $field (@CONFIG_FIELDS) {
-			my $val = $cfg->val( 'CONFIG', $field );
-			$self->{$field} = $val	if(defined $val);
+		   my $val = $cfg->val( 'CONFIG', $field );
+		   $self->{$field} = $val	if(defined $val);
+                   # msg("Setting $field = $val") if (defined $val);
+
 		}
 		my @list = $cfg->val( 'CONFIG', 'exclude_dists' );
 		$self->{exclude_dists} = [ @list ]	if(@list);
@@ -407,7 +449,7 @@ sub new {
 	$self->{database_file} ||= catfile($self->basedir(), DATABASE_FILE);
 
 	$self->_connect_db();
-	$self->_connect_cpanplus();
+	$self->_connect_cpanplus($conf);
 
 	return $self;
 }
@@ -643,13 +685,13 @@ sub test {
       my $distpathver = join("-", $distpath, $ver);
       my $distver     = join("-", $dist,     $ver);
 
-      my $grade = $smoker->{checked}->{$distver} || 'none';
+      my $grade = $smoker->{checked}->{$distver} || 'ungraded';
 
       if ((!defined $grade) ||
-	      ($smoker->{allow_retries} && $grade =~ /$smoker->{allow_retries}/)) {
+	  ($smoker->{allow_retries} && $grade =~ /$smoker->{allow_retries}/)) {
 
-		# We no longer re-test 'unknown' since that rating is reserved
-		# for modules with no tests.
+	    # We no longer re-test 'unknown' since that rating is reserved
+	    # for modules with no tests.
 
 	    my $mod = $smoker->{cpan}->parse_module( module => $distpathver)
 	      or error("Invalid distribution $distver\n");
@@ -706,7 +748,7 @@ sub test {
       if ($passed) {
 		while (my $ver = shift @versions) {
 		  my $distver = join("-", $dist, $ver);
-		  $smoker->{checked}->{$distver} = "unknown";
+		  $smoker->{checked}->{$distver} = "ignored";
 		}
 	  }
     }
@@ -731,13 +773,15 @@ make use of it.
 
 Grades can be one of (case insensitive):
 
-  aborted
-  pass
-  fail
-  unknown
-  na
-  ungraded
-  none
+  aborted  = tests aborted (uninstallable prereqs or other failure in test)
+  pass     = passed tests
+  fail     = failed tests
+  unknown  = no tests available
+  na       = not applicable to platform or installed libraries
+  ungraded = no grade (test possibly aborted by user)
+  none     = undefines a grade
+  ignored  = package was ignored (a newer version was tested)
+
 
 For further use of configuration settings see the new() constructor.
 
@@ -759,8 +803,10 @@ sub mark {
   my $distver = shift || "";
   my $grade   = lc shift || "";
 
+  # See POD above for a description of the grades
+
   if ($grade) {
-    unless ($grade =~ /(pass|fail|unknown|na|none|ungraded|aborted)/) {
+    unless ($grade =~ /(pass|fail|unknown|na|none|ungraded|aborted|ignored)/) {
       return error("Invalid grade: '$grade'");
     }
     if ($grade eq "none") {
@@ -1084,6 +1130,9 @@ subject to any bugs of CPANPLUS.
 
 Please submit suggestions and report bugs to the CPAN Bug Tracker at
 L<http://rt.cpan.org>.
+
+There is a SourceForge project site for CPAN::YACSmoke at
+L<http://sourceforge.net/projects/yacsmoke>.
 
 =head1 SEE ALSO
 

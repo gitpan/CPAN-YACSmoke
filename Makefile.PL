@@ -10,6 +10,7 @@ WriteMakefile
                            'Config::IniFiles' => '0',
                            'File::HomeDir' => '0.06',
                            'File::Spec' => '0',
+                           'File::Temp' => '0',
                            'IO::File' => '0',
                            'LWP::Simple' => '0',
                            'Module::Pluggable' => '2.5',

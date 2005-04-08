@@ -4,6 +4,10 @@ use CPAN::YACSmoke;
 use CPAN::YACSmoke::Plugin::Recent;
 use CPANPLUS::Configure;
 
+use File::Temp qw( tempdir );
+
+my $listpath = tempdir( CLEANUP => 1 );
+
 my $conf = CPANPLUS::Configure->new();
 my $smoke = {
     conf    => $conf,
@@ -12,7 +16,7 @@ bless $smoke, 'CPAN::YACSmoke';
 
 my $self  = {
     smoke   => $smoke,
-    recent_list_path => '.'
+    recent_list_path => $listpath,
 };
 
 my $plugin = CPAN::YACSmoke::Plugin::Recent->new($self);
@@ -23,7 +27,7 @@ ok(@list > 0);
 
 $self  = {
     smoke   => $smoke,
-    recent_list_path => '.',
+    recent_list_path => $listpath,
     recent_list_age => 1
 };
 

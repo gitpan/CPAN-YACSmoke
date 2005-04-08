@@ -26,11 +26,13 @@ my $build = Module::Build->new
        'CPANPLUS'                   => 0.053,
        'Test::Pod'                  => 1.00,
        'Test::Pod::Coverage'        => 0,
+       'Test::Portability::Files'   => 0,
        'Test::Prereq'               => 0,
        'Test::Reporter'             => 1.27,
        'YAML'                       => 0.35, #
      },
      build_requires => {
+       'File::Temp'                 => 0,
        'Test::More'                 => 0,
      },
      create_makefile_pl => 'traditional',
