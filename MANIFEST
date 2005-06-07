@@ -7,11 +7,15 @@ Makefile.PL
 MANIFEST
 META.yml
 README
+bin/yacsmoke.pl
 lib/CPAN/YACSmoke.pm
+lib/CPAN/YACSmoke/Plugin/PlainTextList.pm
 lib/CPAN/YACSmoke/Plugin/Recent.pm
 lib/CPAN/YACSmoke/Plugin/SmokeDB.pm
 lib/CPAN/YACSmoke/FAQ.pod
 t/00basics.t
+t/12datalist.t
+t/12datalist.txt
 t/13recent.t
 t/20test.t
 t/21mark.t

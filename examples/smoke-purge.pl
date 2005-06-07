@@ -3,7 +3,7 @@ use strict;
 
 use lib qw(.\lib);
 
-use CPAN::YACSmoke qw(:all);
+use CPAN::YACSmoke qw(purge);
 
 my %conf  = (
 	audit_log	=> 'audit.log',
@@ -17,7 +17,9 @@ while(<DATA>) {
 	push @list, $_;
 }
 
-purge(\%conf,@list)	if(@list);
+my $smoker = CPAN::YACSmoke->new(%conf);
+
+$smoker->purge(@list)	if(@list);
 
 __END__
 __DATA__

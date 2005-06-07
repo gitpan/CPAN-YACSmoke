@@ -30,7 +30,7 @@ use 5.006001;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # -------------------------------------
 # Library Modules
@@ -38,7 +38,8 @@ our $VERSION = '0.02';
 use CPAN::YACSmoke;
 use LWP::Simple;
 use URI;
-use File::Spec::Functions qw( catfile );
+use Path::Class;
+# use File::Spec::Functions qw( catfile );
 use IO::File;
 
 # -------------------------------------
@@ -89,7 +90,7 @@ sub download_list {
   my $self  = shift;
 
   my $path  = $self->{recent_list_path} || $self->{smoke}->basedir();
-  my $local = catfile( $path, RECENT_FILE );
+  my $local = file( $path, RECENT_FILE ); # catfile
 
   if ((!$self->{force}) && $self->{recent_list_age} &&
       (-e $local) && ((-M $local) < $self->{recent_list_age}) ) {
@@ -118,11 +119,11 @@ sub download_list {
     or croak("Cannot access local RECENT file [$local]: $!\n");
   while (<$fh>) {
     next    unless(/^authors/);
-    next    if(/CHECKSUMS|\.meta|\.readme/);
+    next    unless(/\.(tar\.gz|tgz|tar\.bz2|zip)\n$/);
     s!authors/id/!!;
     chomp;
-    #	$self->{smoke}->msg("RECENT $_", $self->{smoke}->{debug});
-    #	print STDERR $_, "\n";
+    # $self->{smoke}->msg("RECENT $_", $self->{smoke}->{debug});
+    # print STDERR $_, "\n";
     push @testlist, $_;
   }
 

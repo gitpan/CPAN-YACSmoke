@@ -17,6 +17,20 @@ and send out the reports.  The advantage is that we don't have to re-write
 duplicate code.  The disadvantage is that some of the bugs in CPANPLUS will
 affect CPAN::YACSmoke as well. 
 
+=item Test reports have my build directory location...
+
+This is a CPANPLUS issue, not a YACSmoke issue. To change it, you need
+to change the C<extractdir> and C<fetchdir> locations in CPANPLUS. Open
+the shell and run the following commands:
+
+  s conf extractdir /some/extract/dir
+  s conf fetchdir /some/fetch/dir
+  s save
+
+Alternatively, you can update those settings in the F<cpansmoke.ini> file,
+but that will only affect test reports sent out using YACSmoke, and not
+those from the CPANPLUS shell.
+
 =back
 
 =head2 Module Authors
@@ -69,15 +83,26 @@ See L<perlport> - Writing portable Perl.
 =item How can I get YACSmoke to issue an NA report?
 
 YACSmoke relies on CPANPLUS to determine that. Currently (CPANPLUS version
-0.053) looks at the module name: if it begins with a platform name such
+0.054) looks at the module name: if it begins with a platform name such
 as "Win32" or "Solaris", then it issues an "NA" (Not Applicable) report.
 
 We are looking into ways to allow tests to issue NA results rather
 than relying on package names.
 
+One suggestion from the Perl module-authors list
+L<http://www.nntp.perl.org/group/perl.module-authors/3600> is 
+in the F<Makefile.PL> and F<Build.PL> to die with a reason:
+
+  die "NA: $reason";
+
+Note that current versions of CPANPLUS and YACSmoke do not yet recognize this.
+
 =back
 
 =head1 SEE ALSO
 
+L<CPANPLUS>
+
+L<CPAN>
 
 =cut

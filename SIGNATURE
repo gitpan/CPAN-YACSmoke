@@ -14,20 +14,24 @@ not run its Makefile.PL or Build.PL.
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-SHA1 ee88399b19d5a9ec7a83d4b0e11d94a5cd8f0bed Build.PL
-SHA1 a8ce6682401e5b65241f063ed65650b5f99debb9 Changes
-SHA1 ae7dec0e9aca38eeb0301650f397e1d39ece69dd MANIFEST
-SHA1 d9a883bbe02b83b7e9ff7fc119ff8f44ca442409 META.yml
-SHA1 33259f3c121940d1bb35239bd892f77f654c0bfa Makefile.PL
-SHA1 844772e796a2b1fd6c82b3db75ebf1f3030e2196 README
+SHA1 c8945bf5dd153c5e5bddffa7324028a187c1b3c9 Build.PL
+SHA1 41aa65cfcc729cdf94e2ed3cd1b5ec996602dfc8 Changes
+SHA1 52f1f57ecbc990b2125e101ae125293b912f15e5 MANIFEST
+SHA1 c48f94cb49a4a9ae58e0e2a7e244d8495f23212d META.yml
+SHA1 bdd61ec42f9e8258096cf7082671a2e53d3ccc5c Makefile.PL
+SHA1 cb743e79b1aaf5fa4ca61ee8a491435a10d87f6d README
+SHA1 a62771e35cef3d01c20bad56a03eaa6654883833 bin/yacsmoke.pl
 SHA1 3a59adcb2f0675847b54ae178a1c2ba1926bbf26 examples/cpansmoke.pl
-SHA1 8342f95199bb738ac853627abf1745bd70439cdf examples/smoke-purge.pl
-SHA1 e769d26f2901ed41d0c8d7fd88b9e7fd10dd14a5 examples/smoke-reports.pl
-SHA1 476e349e7c5ac44afda65598c0fa0fa8873da6e5 lib/CPAN/YACSmoke.pm
-SHA1 6df092863f2f677c5ce92d3f33bb637fd78604de lib/CPAN/YACSmoke/FAQ.pod
-SHA1 5da36d10507d520e3669cff0dc1c2b4a3fbc5de0 lib/CPAN/YACSmoke/Plugin/Recent.pm
+SHA1 f0533694e1b99da283dda69d7b2923c7f18494d8 examples/smoke-purge.pl
+SHA1 55da20ed51d09e4c86c04e1de2d1dc079ca137a5 examples/smoke-reports.pl
+SHA1 c6c8fb00494f2a723aa609ff0a14e30f003f50e6 lib/CPAN/YACSmoke.pm
+SHA1 820607dbd3f6535ec0ba2fc7cf923c7bf6d6e18a lib/CPAN/YACSmoke/FAQ.pod
+SHA1 b2a94c9ee9f934dd93b503f57b0f1077148e98fe lib/CPAN/YACSmoke/Plugin/PlainTextList.pm
+SHA1 6b4e6241aade5b502fd3866ff86d19ec63c0a15e lib/CPAN/YACSmoke/Plugin/Recent.pm
 SHA1 32762a2a103fccda5f8fe5706716ded75c9a4e2f lib/CPAN/YACSmoke/Plugin/SmokeDB.pm
-SHA1 52380f67d10da23a8d559939fbec6abc21d1c09c t/00basics.t
+SHA1 e34c0c41dd6bd7bef1af0a985ba215e9238ed845 t/00basics.t
+SHA1 6b7715ab126588103cc37c2ed11bbde1c8e34a44 t/12datalist.t
+SHA1 9ed208cd801d2d501a4b00fde6becd86edc64a56 t/12datalist.txt
 SHA1 578dca0f70d4dc37ea1ffa3903d56e6e3971d153 t/13recent.t
 SHA1 9ee89d2db25897eb938114d1b071e3034294903b t/20test.t
 SHA1 4490e674752edad89d669a1f4c0f283d0be0c371 t/21mark.t
@@ -40,7 +44,7 @@ SHA1 e80299ca5b2c550b0be839893e36da3df62367bf t/config.ini
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.2.5 (MingW32)
 
-iD8DBQFCVoRCV485gMKcmRARAj4sAKC5ONrvd8gWlrpjq7ATHCLU0g6n7wCgwHWQ
-G1dtPZuYRsxMnnRu4QTUSl8=
-=SqWO
+iD8DBQFCpXQSV485gMKcmRARAhHOAKDpeccmsZ3dUTjUUlIQ40gzhsgyxACgh8CJ
+OwT9n9qQuKlpgCnvwDchosQ=
+=tAXh
 -----END PGP SIGNATURE-----

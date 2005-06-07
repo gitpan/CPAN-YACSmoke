@@ -23,5 +23,12 @@ my %conf  = (
 	config_file	=> 'cpansmoke.ini',
 );
 
-mark(\%conf);
-#excluded(\%conf);
+my @list = qw(
+);
+
+my $smoker = CPAN::YACSmoke->new(%conf);
+
+$smoker->mark();
+#$smoker->mark("$_")			for(@list);
+#$smoker->mark("$_",'none')	for(@list);
+#$smoker->excluded();
